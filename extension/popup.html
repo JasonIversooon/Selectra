@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AI Anchor</title>
+    <style>
+      body { font-family: Arial, sans-serif; width: 300px; padding: 10px }
+      button { display:block; width:100%; margin:6px 0 }
+    </style>
+  </head>
+  <body>
+    <h3>AI Anchor</h3>
+    <div>
+      <button id="open-logs">Open latest result</button>
+    </div>
+    <script>
+      document.getElementById('open-logs').addEventListener('click', async () => {
+        chrome.storage.local.get(['last_result_key'], (res) => {
+          const key = res.last_result_key;
+          if (!key) return alert('No recent result');
+          const pageUrl = chrome.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
+          chrome.tabs.create({ url: pageUrl });
+        });
+      });
+    </script>
+  </body>
+</html>
