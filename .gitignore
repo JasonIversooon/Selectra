@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.env.*
+*.env
+
+# Node
+node_modules/
+
+# Mac
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Python venvs
+.venv/
+venv/
+
+# Build artifacts
+*.log
