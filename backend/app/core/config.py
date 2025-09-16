@@ -24,3 +24,10 @@ RATE_LIMIT_WINDOW_SEC = int(os.getenv("RATE_LIMIT_WINDOW_SEC", "60"))
 
 # Testing / development helpers
 FAKE_EXTERNALS = os.getenv("FAKE_EXTERNALS", "false").lower() in {"1", "true", "yes"}
+
+# Search provider config (no fallbacks)
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave | google
+
+# API keys
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")          # Brave Search API
+

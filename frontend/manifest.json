@@ -5,9 +5,10 @@
   "description": "Right-click selected text and use AI actions (summarize, explain, sentiment, find sources)",
   "permissions": [
     "contextMenus",
-  "scripting",
+    "scripting",
     "activeTab",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "background": {
     "service_worker": "background.js"

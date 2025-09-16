@@ -5,7 +5,7 @@ This folder contains a Chrome MV3 extension scaffold that communicates with the 
 To load unpacked extension in Chrome/Edge:
 1. Open chrome://extensions
 2. Enable Developer mode
-3. Click "Load unpacked" and choose the `extension/` folder
+3. Click "Load unpacked" and choose the `frontend/` folder
 
 Actions added to context menu: Summarize, Explain (layman), Explain (detailed), Sentiment, Find sources.
 

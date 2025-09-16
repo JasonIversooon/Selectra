@@ -90,6 +90,17 @@ function hideInline() {
   if (inlinePanel) inlinePanel.style.display = 'none';
 }
 
+// Simple HTML escaper used for inline panel safety
+function escapeHtml(unsafe) {
+  if (!unsafe) return '';
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Listen for inline result messages from background
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'result') {

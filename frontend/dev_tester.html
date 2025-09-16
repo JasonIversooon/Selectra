@@ -8,6 +8,8 @@
       textarea { width: 100%; height: 160px; }
       select, button { margin: 8px 0; }
       pre { background: #f6f8fa; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      iframe { width: 100%; height: 360px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
     </style>
   </head>
   <body>
@@ -25,16 +27,52 @@
     <textarea id="text" placeholder="Paste text here..."></textarea>
     <br />
     <button id="run">Run</button>
-    <h3>Result</h3>
-    <pre id="out">(nothing yet)</pre>
+    <div class="row">
+      <div>
+        <h3>Raw result</h3>
+        <pre id="out">(nothing yet)</pre>
+      </div>
+      <div>
+        <h3>Rendered preview (matches extension)</h3>
+        <iframe id="preview" sandbox="allow-same-origin"></iframe>
+        <button id="open">Open result in new tab</button>
+      </div>
+    </div>
 
     <script>
-      const BACKEND_URL = 'http://192.168.0.125:8000/api/analyze';
+      const BACKEND_URL = 'http://localhost:8000/api/analyze';
       const out = document.getElementById('out');
+      const frame = document.getElementById('preview');
+      const openBtn = document.getElementById('open');
+      let lastHtml = '';
+
+      function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function buildResultHtml(action, result) {
+        const safe = escapeHtml(result);
+        return `<!doctype html><html><head><meta charset="utf-8">
+<title>AI Anchor result</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;padding:16px}
+  pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f8fa;padding:12px;border-radius:6px}
+</style></head>
+<body><h2>${escapeHtml(action)}</h2><pre>${safe}</pre></body></html>`;
+      }
+
       document.getElementById('run').addEventListener('click', async () => {
         const text = document.getElementById('text').value;
         const action = document.getElementById('action').value;
         out.textContent = 'Loading...';
+        frame.srcdoc = '<!doctype html><html><body style="font-family:Arial;padding:16px">Loading...</body></html>';
+        lastHtml = '';
         try {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 45000);
@@ -45,16 +83,36 @@
             signal: controller.signal,
           });
           clearTimeout(timer);
+
           const contentType = resp.headers.get('content-type') || '';
           const body = contentType.includes('application/json') ? (await resp.json()) : { raw: await resp.text() };
           if (!resp.ok) {
-            out.textContent = `HTTP ${resp.status}: ${body.detail || body.raw || JSON.stringify(body)}`;
+            const msg = `HTTP ${resp.status}: ${body.detail || body.raw || JSON.stringify(body)}`;
+            out.textContent = msg;
+            frame.srcdoc = `<!doctype html><html><body style="font-family:Arial;padding:16px;color:#b00020">${escapeHtml(msg)}</body></html>`;
             return;
           }
-          out.textContent = body.result || body.raw || JSON.stringify(body);
+
+          const result = body.result || body.raw || JSON.stringify(body);
+          out.textContent = result;
+
+          // Build identical HTML to frontend/background.js
+          lastHtml = buildResultHtml(action, result);
+          frame.srcdoc = lastHtml;
         } catch (e) {
-          out.textContent = 'Request failed: ' + (e?.message || e);
+          const msg = 'Request failed: ' + (e?.message || e);
+          out.textContent = msg;
+          frame.srcdoc = `<!doctype html><html><body style="font-family:Arial;padding:16px;color:#b00020">${escapeHtml(msg)}</body></html>`;
         }
+      });
+
+      openBtn.addEventListener('click', () => {
+        if (!lastHtml) return;
+        const blob = new Blob([lastHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Optionally revoke later
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
       });
     </script>
   </body>

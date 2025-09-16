@@ -37,19 +37,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const safe = escapeHtml(data.result);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>AI Anchor result</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:16px}pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f8fa;padding:12px;border-radius:6px}</style></head><body><h2>${escapeHtml(info.menuItemId)}</h2><pre>${safe}</pre></body></html>`;
 
-    // Save to storage and open result page
     const key = `result_${Date.now()}`;
     const obj = {};
     obj[key] = html;
     chrome.storage.local.set(obj, () => {
-        chrome.storage.local.set({ last_result_key: key }, () => {
-          const pageUrl = chrome.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
-          chrome.tabs.create({ url: pageUrl });
-          // If we know the sender tab, notify it so content script can show inline result
-          if (sender && sender.tab && sender.tab.id) {
-            chrome.tabs.sendMessage(sender.tab.id, { type: 'result', key, html });
-          }
-        });
+      chrome.storage.local.set({ last_result_key: key }, () => {
+        const pageUrl = chrome.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
+        chrome.tabs.create({ url: pageUrl });
+        // Send inline result back to the tab where the context menu was used
+        if (tab && tab.id) {
+          chrome.tabs.sendMessage(tab.id, { type: 'result', key, html });
+        }
+      });
     });
   } catch (err) {
     console.error('analyze error', err);
