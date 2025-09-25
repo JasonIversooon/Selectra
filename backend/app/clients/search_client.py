@@ -1,32 +1,30 @@
 import httpx
 import logging
 import re
+import asyncio
+import string
+from collections import Counter
 from typing import List, Optional
-from ..core.config import FAKE_EXTERNALS, BRAVE_API_KEY
+
+from ddgs import DDGS
+
+from ..core.config import get_settings
 
 logger = logging.getLogger(__name__)
-
+settings = get_settings()
 
 async def find_sources_duckduckgo(query: str) -> str:
-    """
-    Brave Search only (no other providers or fallbacks).
-    Returns up to 5 lines: "<url> - <snippet>".
-    """
     text = (query or "").strip()
     if not text:
         return "No text to search."
 
-    # Keep this for local tests only; not used in prod unless FAKE_EXTERNALS=true
-    if FAKE_EXTERNALS:
+    if settings.fake_externals:
         return "https://example.com - Example Source One\nhttps://example.org - Example Source Two"
 
-    if not BRAVE_API_KEY:
-        return "Brave Search not configured (set BRAVE_API_KEY)."
+    entity, compact_q, keywords = _build_compact_query(text)
+    logger.info("search provider=duckduckgo query='%s' entity='%s'", compact_q, entity or "")
 
-    entity, compact_q = _build_compact_query(text)
-    logger.info("search provider=brave query='%s' entity='%s'", compact_q, entity or "")
-
-    results = await _search_brave(compact_q, entity)
+    results = await _search_duckduckgo(compact_q, entity, keywords)
     if not results:
         return "Could not find sources."
     return "\n".join(results[:5])
@@ -34,70 +32,63 @@ async def find_sources_duckduckgo(query: str) -> str:
 
 # --- Providers ---
 
-async def _search_brave(q: str, entity: Optional[str]) -> List[str]:
-    url = "https://api.search.brave.com/res/v1/web/search"
+async def _search_duckduckgo(q: str, entity: Optional[str], keywords: list[str]) -> List[str]:
+    loop = asyncio.get_running_loop()
+
+    def _search():
+        with DDGS(timeout=10) as client:
+            return list(client.text(q, backend="lite", safesearch="moderate", max_results=10))
+
     try:
-        async with httpx.AsyncClient(
-            timeout=12,
-            headers={"X-Subscription-Token": BRAVE_API_KEY, "Accept": "application/json"},
-        ) as client:
-            r = await client.get(url, params={"q": q, "count": 10, "country": "us"})
-        if r.status_code != 200:
-            logger.warning("Brave non-200 status=%s", r.status_code)
-            return []
-        data = r.json()
-        items = (((data or {}).get("web") or {}).get("results")) or []
-        results = []
-        for it in items:
-            title = it.get("title") or ""
-            snippet = it.get("description") or ""
-            link = it.get("url")
-            if not link:
-                continue
-            if not _is_relevant(title, snippet, entity):
-                continue
-            results.append(f"{link} - {snippet}")
-            if len(results) >= 5:
-                break
-        return results
+        items = await loop.run_in_executor(None, _search)
     except Exception:
-        logger.exception("Brave search failed")
+        logger.exception("DuckDuckGo search failed")
         return []
+
+    results = []
+    for it in items or []:
+        title = it.get("title") or ""
+        snippet = it.get("body") or it.get("snippet") or ""
+        link = it.get("href") or it.get("url") or ""
+        if not link:
+            continue
+        if not _is_relevant(title, snippet, entity, keywords):
+            continue
+        results.append(f"{link} - {snippet}")
+        if len(results) >= 5:
+            break
+    return results
 
 
 # --- Helpers ---
 
-def _build_compact_query(text: str) -> tuple[Optional[str], str]:
-    """Compress long prose into a focused query, e.g., 'Socompa volcano'."""
+STOPWORDS = {"the","and","with","from","that","have","this","about","there","which","would","could","their","while","were","been","because","into","after","before","between","through","other","these","those","over","under","also","more","most"}
+
+def _build_compact_query(text: str) -> tuple[Optional[str], str, list[str]]:
     s = " ".join(text.split())
+    if not s:
+        return None, "", []
+
+    tokens = [t.strip(string.punctuation) for t in s.lower().split()]
+    tokens = [t for t in tokens if len(t) > 3 and t not in STOPWORDS]
+
+    counts = Counter(tokens)
+    top_terms = [term for term, _ in counts.most_common(4)]
+
     entity = None
-    m = re.match(r"^\s*([A-Z][\w\-]*(?:\s+[A-Z][\w\-]*){0,4})\s+(?:is|was|,)\b", s)
-    if m:
-        entity = m.group(1)
-    else:
-        caps = re.findall(r"[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*){0,4}", s[:200])
-        entity = max(caps, key=len) if caps else None
+    caps = re.findall(r"[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*){0,4}", s[:200])
+    if caps:
+        entity = max(caps, key=len)
+        top_terms.insert(0, entity)
 
-    parts = []
-    if entity:
-        parts.append(entity)
+    compact = " ".join(dict.fromkeys(top_terms)) or s[:120]
+    return entity, compact.strip(), top_terms
 
-    low = s.lower()
-    if "stratovolcano" in low or "volcano" in low:
-        parts.append("volcano")
-    elif "mountain" in low or "mt " in low or "mount " in low:
-        parts.append("mountain")
-
-    compact = " ".join(dict.fromkeys(parts)) if parts else s[:120]
-    return entity, compact.strip()
-
-
-def _is_relevant(title: str, snippet: str, entity: Optional[str]) -> bool:
-    """Light relevance: entity mention and domain keywords."""
-    t = (title or "").lower()
-    sn = (snippet or "").lower()
-    if entity and entity.lower() not in (t + " " + sn):
-        return False
-    if any(k in (t + " " + sn) for k in ["volcano", "stratovolcano", "mountain"]):
+def _is_relevant(title: str, snippet: str, entity: Optional[str], keywords: list[str]) -> bool:
+    text_blob = f"{title or ''} {snippet or ''}".lower()
+    if entity and entity.lower() in text_blob:
         return True
-    return bool(entity and entity.lower() in t)
+    for k in keywords[:3]:
+        if k.lower() in text_blob:
+            return True
+    return False

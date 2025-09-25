@@ -104,11 +104,11 @@ function escapeHtml(unsafe) {
 // Listen for inline result messages from background
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'result') {
-    // message.html is full HTML; we only want the inner content
     const parser = new DOMParser();
     const doc = parser.parseFromString(message.html, 'text/html');
-    const content = doc.querySelector('pre') ? doc.querySelector('pre').innerText : doc.body.innerText;
-    showInlineAtSelection(`<div style="max-height:300px;overflow:auto"><pre style="white-space:pre-wrap;">${escapeHtml(content)}</pre></div>`);
+    const contentNode = doc.querySelector('.result-text');
+    const innerHtml = contentNode ? contentNode.innerHTML : escapeHtml(doc.body.innerText || '');
+    showInlineAtSelection(`<div style="max-height:300px;overflow:auto;font-family:Arial,Helvetica,sans-serif;line-height:1.45;"><div style="white-space:pre-wrap;word-break:break-word;">${innerHtml}</div></div>`);
   }
 });
 

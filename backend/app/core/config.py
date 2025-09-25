@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv, find_dotenv
+from functools import lru_cache
 
 # Load variables from a local .env file if present (non-fatal if missing)
 load_dotenv(find_dotenv(), override=False)
@@ -25,9 +26,29 @@ RATE_LIMIT_WINDOW_SEC = int(os.getenv("RATE_LIMIT_WINDOW_SEC", "60"))
 # Testing / development helpers
 FAKE_EXTERNALS = os.getenv("FAKE_EXTERNALS", "false").lower() in {"1", "true", "yes"}
 
-# Search provider config (no fallbacks)
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave | google
+# Search provider config (duckduckgo only for now)
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "duckduckgo").lower()
 
-# API keys
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")          # Brave Search API
+# API keys (Brave kept only for backward compatibility; not used with DuckDuckGo)
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
+
+class Settings:
+    def __init__(self) -> None:
+        self.groq_api_key = GROQ_API_KEY
+        self.groq_model = GROQ_MODEL
+        self.groq_timeout_sec = GROQ_TIMEOUT_SEC
+        self.backend_allowed_origins = BACKEND_ALLOWED_ORIGINS
+        self.max_text_length = MAX_TEXT_LENGTH
+        self.enable_cache = ENABLE_CACHE
+        self.cache_max_items = CACHE_MAX_ITEMS
+        self.rate_limit_requests = RATE_LIMIT_REQUESTS
+        self.rate_limit_window_sec = RATE_LIMIT_WINDOW_SEC
+        self.fake_externals = FAKE_EXTERNALS
+        self.search_provider = SEARCH_PROVIDER
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings()
 

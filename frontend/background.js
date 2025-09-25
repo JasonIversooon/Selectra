@@ -34,8 +34,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!resp.ok) throw new Error(`Status ${resp.status}`);
     const data = await resp.json();
 
-    const safe = escapeHtml(data.result);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>AI Anchor result</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:16px}pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f8fa;padding:12px;border-radius:6px}</style></head><body><h2>${escapeHtml(info.menuItemId)}</h2><pre>${safe}</pre></body></html>`;
+    const html = buildResultPage(info.menuItemId, data.result);
 
     const key = `result_${Date.now()}`;
     const obj = {};
@@ -76,8 +75,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!resp.ok) throw new Error(`Status ${resp.status}`);
         const data = await resp.json();
 
-        const safe = escapeHtml(data.result);
-        const html = `<!doctype html><html><head><meta charset="utf-8"><title>AI Anchor result</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:16px}pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f8fa;padding:12px;border-radius:6px}</style></head><body><h2>${escapeHtml(message.action)}</h2><pre>${safe}</pre></body></html>`;
+        const html = buildResultPage(message.action, data.result);
 
         const key = `result_${Date.now()}`;
         const obj = {};
@@ -104,8 +102,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+function buildResultPage(action, result) {
+  const safeAction = escapeHtml(action);
+  const resultHtml = renderResultContent(result);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>AI Anchor result</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:16px;line-height:1.5;color:#1f1f1f}
+    h2{margin-top:0;font-size:20px}
+    .result-text{white-space:pre-wrap;word-break:break-word;background:#f6f8fa;padding:12px;border-radius:6px;font-size:15px}
+    .result-text a{color:#0b57d0;text-decoration:underline;word-break:break-word}
+    .result-text strong{font-weight:600}
+    .result-text em{font-style:italic}
+  </style></head><body><h2>${safeAction}</h2><div class="result-text">${resultHtml}</div></body></html>`;
+}
+
+function renderResultContent(text) {
+  const escaped = escapeHtml(text || "");
+  const withMarkdownLinks = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (match, label, url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  });
+  const withBareLinks = withMarkdownLinks.replace(/(^|[\s>])(https?:\/\/[^\s<]+)(?=$|[\s<])/gi, (match, prefix, url) => {
+    const trimmed = url.replace(/[),.;!?]+$/, "");
+    const trailing = url.slice(trimmed.length);
+    return `${prefix}<a href="${trimmed}" target="_blank" rel="noopener noreferrer">${trimmed}</a>${trailing}`;
+  });
+  const withBold = withBareLinks.replace(/\*\*([^\*\n]+?)\*\*/g, "<strong>$1</strong>");
+  const withItalics = withBold.replace(/(^|[\s(>_])\*([^\s*][^*]*?)\*/g, (match, prefix, value) => `${prefix}<em>${value}</em>`);
+  return withItalics;
+}
+
 function escapeHtml(unsafe) {
-  if (!unsafe) return '';
+  if (!unsafe) return "";
   return String(unsafe)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
