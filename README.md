@@ -1,9 +1,3 @@
-```markdown
-# Selectra
-
-Selectra is a small browser extension + backend project that analyzes selected text using AI models and returns summaries, explanations, sentiment, and source-finding assistance.
-
-```markdown
 # Selectra
 
 Selectra is a small browser extension + backend project that analyzes selected text using AI models and returns summaries, explanations, sentiment, and source-finding assistance.
@@ -39,10 +33,4 @@ Open chrome://extensions, enable Developer mode, click "Load unpacked" and selec
 
 Notes
 
-- The frontend defaults to calling `http://localhost:8000/api/analyze`. Update `frontend/background.js` and `manifest.json` host permissions if you change the backend host/port.
-
-License & contact
-
-Add license information here if desired. For questions, contact the repository owner.
-
-``` 
+- The frontend defaults to calling `http://localhost:8000/api/analyze`. Update `frontend/background.js` and `manifest.json` host permissions if you change the backend host/port. 
