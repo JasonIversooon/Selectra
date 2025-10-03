@@ -1,4 +1,5 @@
 const BACKEND_URL = "http://localhost:8000/api/analyze";
+const ext = typeof browser !== "undefined" ? browser : chrome;
 
 const ACTIONS = [
   { id: "summarize", title: "Summarize" },
@@ -8,10 +9,10 @@ const ACTIONS = [
   { id: "find_sources", title: "Find sources" }
 ];
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => {
+ext.runtime.onInstalled.addListener(() => {
+  ext.contextMenus.removeAll(() => {
     for (const a of ACTIONS) {
-      chrome.contextMenus.create({
+      ext.contextMenus.create({
         id: a.id,
         title: a.title,
         contexts: ["selection"]
@@ -20,7 +21,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+ext.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.selectionText) return;
 
   const payload = { text: info.selectionText, action: info.menuItemId };
@@ -39,19 +40,19 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const key = `result_${Date.now()}`;
     const obj = {};
     obj[key] = html;
-    chrome.storage.local.set(obj, () => {
-      chrome.storage.local.set({ last_result_key: key }, () => {
-        const pageUrl = chrome.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
-        chrome.tabs.create({ url: pageUrl });
+    ext.storage.local.set(obj, () => {
+      ext.storage.local.set({ last_result_key: key }, () => {
+        const pageUrl = ext.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
+        ext.tabs.create({ url: pageUrl });
         // Send inline result back to the tab where the context menu was used
         if (tab && tab.id) {
-          chrome.tabs.sendMessage(tab.id, { type: 'result', key, html });
+          ext.tabs.sendMessage(tab.id, { type: 'result', key, html });
         }
       });
     });
   } catch (err) {
     console.error('analyze error', err);
-    chrome.notifications.create({
+    ext.notifications.create({
       type: 'basic',
       iconUrl: 'icon.png',
       title: 'AI Anchor Error',
@@ -61,7 +62,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // listen for messages from content script (floating toolbar)
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+ext.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'analyze') {
     const payload = { text: message.text, action: message.action };
     // fire-and-forget; background already handles error notifications
@@ -80,18 +81,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const key = `result_${Date.now()}`;
         const obj = {};
         obj[key] = html;
-        chrome.storage.local.set(obj, () => {
-            chrome.storage.local.set({ last_result_key: key }, () => {
-              const pageUrl = chrome.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
-              chrome.tabs.create({ url: pageUrl });
+        ext.storage.local.set(obj, () => {
+            ext.storage.local.set({ last_result_key: key }, () => {
+              const pageUrl = ext.runtime.getURL('result.html') + `?key=${encodeURIComponent(key)}`;
+              ext.tabs.create({ url: pageUrl });
               if (sender && sender.tab && sender.tab.id) {
-                chrome.tabs.sendMessage(sender.tab.id, { type: 'result', key, html });
+                ext.tabs.sendMessage(sender.tab.id, { type: 'result', key, html });
               }
             });
         });
       } catch (err) {
         console.error('analyze error', err);
-        chrome.notifications.create({
+        ext.notifications.create({
           type: 'basic',
           iconUrl: 'icon.png',
           title: 'AI Anchor Error',

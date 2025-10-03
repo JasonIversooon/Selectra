@@ -1,34 +1,49 @@
-# AI-anchored Extension - Backend
+# Selectra — Backend
 
-This folder contains a minimal FastAPI backend that accepts text and an action and returns an AI response via Groq.
+Quick start (development)
 
-Run the server locally (example):
+1. From the repo root, create and activate a virtual environment (example with python3):
 
-```
-# from the repository root
+```bash
 cd backend
-# install dependencies (you said you already handle envs/pip)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Copy and edit environment variables:
+
+```bash
+cp .env.example .env
+# edit .env and set GROQ_API_KEY or use FAKE_EXTERNALS=true for local testing
+```
+
+3. Run the server:
+
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-The extension (load unpacked) calls `http://localhost:8000/api/analyze`.
+The frontend extension (when loaded unpacked) talks to the backend at `http://localhost:8000/api/analyze` by default.
 
-Environment variables (create a `.env` file from `.env.example`):
+API and code pointers
 
-- GROQ_API_KEY: Your Groq API key (required for real responses)
-- GROQ_MODEL: Model name (default: `openai/gpt-oss-20b`)
+- Endpoint: POST /api/analyze
+- Routes and request validation: `app/api/routes.py`
+- Main FastAPI app entrypoint: `app/main.py`
+
+Environment variables (summary)
+
+- GROQ_API_KEY: Groq API key for real model calls (required for production)
+- GROQ_MODEL: Model name (default value is set in code)
 - FAKE_EXTERNALS: `true` to return deterministic fake responses for local dev/testing
-- BACKEND_ALLOWED_ORIGINS, MAX_TEXT_LENGTH, ENABLE_CACHE, CACHE_MAX_ITEMS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC
+- BACKEND_ALLOWED_ORIGINS: comma-separated origins allowed for CORS
+- MAX_TEXT_LENGTH, ENABLE_CACHE, CACHE_MAX_ITEMS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC
 
-See the extension README for how to load the extension in Chrome/Edge.
+Notes and next steps
 
-Next steps for backend:
-- Fine-tune prompts per action.
-- Add retries/backoff for Groq calls.
-- Optionally support streaming responses.
+- Update prompts and actions in `app/services/analyze_service.py` as needed.
+- Add retries/backoff and streaming support for model calls if desired.
+- See the frontend `frontend/README.md` for instructions on loading the browser extension.
 
-Setup with .env:
-
-1. Copy `.env.example` to `.env` in the `backend/` folder.
-2. Edit `.env` and set `GROQ_API_KEY=...` (or set `FAKE_EXTERNALS=true` for offline testing).
-3. Start the server; the app will auto-load `.env`.
+``` 

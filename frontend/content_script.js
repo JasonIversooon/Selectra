@@ -8,6 +8,8 @@ const ACTIONS = [
   { id: "find_sources", label: "Find sources" }
 ];
 
+const ext = typeof browser !== 'undefined' ? browser : chrome;
+
 let toolbar = null;
 let inlinePanel = null;
 
@@ -53,7 +55,7 @@ function createToolbar() {
       const text = sel.toString();
       // show inline loading
       showInlineAtSelection('Loading...');
-      chrome.runtime.sendMessage({ type: 'analyze', action: a.id, text });
+      ext.runtime.sendMessage({ type: 'analyze', action: a.id, text });
       hideToolbar();
     });
     toolbar.appendChild(btn);
@@ -102,7 +104,7 @@ function escapeHtml(unsafe) {
 }
 
 // Listen for inline result messages from background
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+ext.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'result') {
     const parser = new DOMParser();
     const doc = parser.parseFromString(message.html, 'text/html');

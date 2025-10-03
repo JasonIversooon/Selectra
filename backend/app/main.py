@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AI Extension Backend")
+    app = FastAPI(title="Selectra Backend")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if BACKEND_ALLOWED_ORIGINS == "*" else BACKEND_ALLOWED_ORIGINS.split(","),

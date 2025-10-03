@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "ai_extension_backend"
+name = "selectra-backend"
 version = "0.1.0"
-description = "Backend API for AI-anchored browser extension"
+description = "Backend API for the Selectra browser extension"
 
 [tool.poetry.dependencies]
 python = "^3.10"
