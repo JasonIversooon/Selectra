@@ -12,6 +12,10 @@ Repository layout
 
 - frontend/ — Chrome/Edge MV3 extension (popup, background script, content script, manifest)
   - manifest.json, background.js, content_script.js, popup.html, dev_tester.html
+ 
+# DEMO VIDEO
+![selectra-gif](https://github.com/user-attachments/assets/c8267041-f6d8-4a79-814b-866c64e4825b)
+
 
 Quick start
 
